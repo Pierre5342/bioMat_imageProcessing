@@ -10,8 +10,7 @@ import cv2, math
 import numpy as np
 
 from math import pi
-from scipy import ndimage, spatial
-from sklearn.metrics import r2_score
+from scipy import ndimage
 from sklearn.linear_model import LinearRegression
 from skimage import transform, morphology, filters, segmentation, feature, measure
 

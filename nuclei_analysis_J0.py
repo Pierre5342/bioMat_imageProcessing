@@ -16,11 +16,14 @@ import matplotlib.pyplot as plt
 from math import pi
 from skimage import measure, io
 from scipy import ndimage
+
 from auxiliary_functions import rescale, crop, find_groove_angle_using_fileName, correct_contrasts
 from auxiliary_functions import otsu_binaryWatershed
 from auxiliary_functions import membranes_binarisation, find_intersect_points, find_rotation_angle, find_axis_origins
 from auxiliary_functions import distance, count_contacts, detect_groups
     
+
+
 
 
 
@@ -36,10 +39,11 @@ def main(fileName, dirName, output_dirName) :
         filepath = '/'.join([directory_path, fileName])
         filepath_list.append(filepath)
         
-        excelName = "data_" + fileName + ".xlsx"
+        excelName = "data_" + fileName.split("/")[-1][:-4] + ".xlsx"
         
         if output_dirName == "NA":
-            output_dirName = "analysisResults_" + fileName
+            actual_fileName = fileName.split("/")
+            output_dirName = "analysisResults_" + actual_fileName[-1][:-4]
     
     if dirName != "NA" :
         try :
@@ -75,8 +79,14 @@ def main(fileName, dirName, output_dirName) :
     directories = subprocess.check_output(["dir", "/ad", "/b"], shell=True, text=True)
     existing_dir = directories.split("\n")
     
-    # print(existing_dir)
-    
+    for i, name in enumerate(existing_dir[:-1]) :
+        index = name.rfind('œ')
+        if index != -1 :
+            nliste = list(name)
+            nliste[index] = '£'
+            name = ''.join(nliste)
+            existing_dir[i] = name
+            
     if output_dirName in existing_dir :
         val = input("A directory named "+output_dirName+" already exists, its content may be overwritten. Do you want to continue ? (y/n)")
         
@@ -86,8 +96,8 @@ def main(fileName, dirName, output_dirName) :
         subprocess.run(["mkdir", output_dirName], shell=True)
 
     
-    # print("Starting image analysis")
     with pd.ExcelWriter(output_dirName+"/"+excelName) as writer:
+        
         for k, filepath in enumerate(filepath_list) :
             t1 = time.time()
             ######################### Image pre-treatment #########################
@@ -112,7 +122,6 @@ def main(fileName, dirName, output_dirName) :
             if angle == pi :
                 rescaled_nuclei = correct_contrasts(rescaled_nuclei)
             
-            # print("Image pre-treatment done")
             ######################### Axis definition #########################
             
             ## Membranes channel image binarization
@@ -147,7 +156,7 @@ def main(fileName, dirName, output_dirName) :
             
             z0, x0 = find_axis_origins(intersection_points)
             
-            # print("Axis definition done")
+            
             ######################## Nuclei segmentation ######################
             rotated_nuclei = ndimage.rotate(rescaled_nuclei, math.degrees(phi), axes=(0,1))
             
@@ -273,6 +282,8 @@ def main(fileName, dirName, output_dirName) :
             
             density_data.to_excel(writer, sheet_name=sheet_name, index_label=["Intervals along Z axis"], startcol=13, startrow=4)
             
+            
+            # Graphs creation
             fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(10, 5))
             
             x = [i for i in range(0, max_hight, interval)]
@@ -315,7 +326,6 @@ def main(fileName, dirName, output_dirName) :
             
             general_data.to_excel(writer, sheet_name=sheet_name, startcol=8)
             
-            
             groups = detect_groups(segmented_nuclei)
             
             ind_row = pd.RangeIndex(1, len(groups)+1)
@@ -324,9 +334,6 @@ def main(fileName, dirName, output_dirName) :
             contacts_data.to_excel(writer, sheet_name=sheet_name, index_label=["Group size (nb of connected nuclei)"], startcol=17, startrow=4)
             
             
-            
-
-            
             t2 = time.time()
             t_min = round((t2-t1)//60)
             t_s = round((t2-t1)%60)
@@ -334,16 +341,13 @@ def main(fileName, dirName, output_dirName) :
             
         
         
-   
-    
-        
 
 
 def print_help():
     print("\n")
     print("This script is designed to use the raw image coming directly from the confocal microscope, and perform all the necessary operation to segment and analyse the nuclei, and save the segmented images, an excel file containing the data from the image analysis and several graphs.")
     print("The script is executed via the following command line:")
-    print("\t python nuclei_analysis_J0.py [-f fileName | -d directoryName] -o outputName [-h]")
+    print("\t python nuclei_analysis_J0.py [-f fileName | -d directoryName] [-o outputName] [-h]")
     print("\n")
     print("The parameters that can be used for the script execution are the following ones.")
     print("Mandatory parameters:")
@@ -355,9 +359,6 @@ def print_help():
     print("\t-o | --output-directory <outputDirName> : name of the folder in which the results produced by the script will be stored (segmented image(s), excel file containing analysis data, graphs). If the folder doesn't exist, it will be created; if it does, a warning is issued to warn of the potential overwriting of existing files with identical names.")
     print("\t-h | --help : displays this documentation.")
     print("\n")
-
-
-
 
 
 
